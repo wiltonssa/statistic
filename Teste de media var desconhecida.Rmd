@@ -1,0 +1,131 @@
+---
+title: "Teste de média - Variância desconhecida"
+author: "Bruno Tebaldi"
+date: "06/06/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+# Clear all
+rm(list = ls())
+
+# Biblioteca utilizada
+library(ggplot2)
+
+```
+
+## R Markdown
+
+Como exemplo, suponha que desejamos comparar a ingestão média de um grupo específico de indivíduos com a ingestão diária recomendada. A Tabela abaixo mostra a ingestão média diária de energia em dez dias em 11 mulheres saudáveis com idade entre 22 e 30 anos. (D.G. Altman (1991), Practical Statistics for Medical Research, p. 183)
+
+```{r daily.intake}
+dailyIntake = data.frame(Subject = 1:11, Avg_Energy_intake = c(5260,5470,5640,6180,6390,6515,6805,7515,7515,8230,8770))
+
+head(dailyIntake, 11)
+```
+
+```{r media}
+media <- mean(dailyIntake$Avg_Energy_intake)
+sd <- sd(dailyIntake$Avg_Energy_intake)
+cat(sprintf("média: %.2f \n S.d.: %.2f", media, sd))
+```
+
+```{r histograma}
+ggplot(dailyIntake) + 
+  geom_boxplot(aes(x=Avg_Energy_intake)) +
+  labs(title = "Average daily energy intake",
+       subtitle = "Data of taken over 10 days of 11 healthy woman",
+       x = "Average daily energy intake [KJ]",
+       caption = "Manocha et al. (1986)")
+```
+
+A ingestão média diária foi de 6753,6 kJ.
+
+A pequena amostra de observações não mostra distorção óbvia. Observe que cada observação é um valor médio em vários dias.
+
+O que podemos dizer sobre o consumo de energia dessas mulheres em relação a um consumo diário recomendado de 7725 kJ?
+
+
+### Passo 1 - Determinando hipotese nula
+
+```{r H_Nula}
+mu = 7725
+```
+
+
+
+### Passo 2 - Definir o tipo de teste e com isso a Estatistica
+
+
+```{r}
+# Definimos o tamanho da amostra
+n <- nrow(dailyIntake)
+
+# Definimos os graus de liberdade
+df <- n -1
+
+# definimos a estatistica t
+t <- (media - mu)/(sd/n^0.5)
+
+# De posse da estatistica podemos calcular o p-valor
+pvalor <- pt(t, df)*2
+```
+
+### Passo 3 - Definir o nivel de confiança e com isso o Critical Value
+
+```{r}
+# Definiremos o valor critico dado um nível de confiança de 0.95
+critical <- qt(0.975, df = df)
+
+# Passo 5: Avaliar os resultados
+x.range <- seq(from=-3, to=3, by=0.1)
+
+table.t_dist <- data.frame(x = x.range, p=0)
+table.t_dist$p <- dt(table.t_dist$x, df=1)
+
+ggplot(table.t_dist) +
+  geom_line(aes(x=x, y=p)) +
+  geom_area(aes(x=x, y=p),
+            data=table.t_dist[table.t_dist$x >= critical,],
+            fill="red", alpha=0.2) +
+  geom_area(aes(x=x, y=p),
+            data=table.t_dist[table.t_dist$x <= -critical,],
+            fill="red", alpha=0.2) +
+  geom_vline(xintercept = 0, linetype="dashed")
+
+
+
+```
+
+
+### Passo 4 - Utilizar os dados da amostra para calcular a estatistica
+
+```{r}
+# Os calculos já estão feitos então vamos apenas imprimir a estatistica calculada
+cat(sprintf(" Estatistica t: %6.2f\nCritival value: %6.2f", t, critical))
+```
+### Passo 5 - Avaliar os resultados
+
+Note que a estátistica da amostra se encontra dentro da região de rejeição. Sendo assim rejeitamos a hipótese nula em favor da hipótese alternativa.
+
+```{r}
+# Construimos um grid de valores para desenhar (plotar) a curva normal
+x.range <- seq(from=-3, to=3, by=0.1)
+
+# Construimos uma tabela com os dados da curva normal
+table.t_dist <- data.frame(x = x.range, p=0)
+table.t_dist$p <- dt(table.t_dist$x, df=1)
+
+# Plotamos uma curva normal com a região critica e o valor da estatistica em azul
+ggplot(table.t_dist) +
+  geom_line(aes(x=x, y=p)) +
+  geom_area(aes(x=x, y=p),
+            data=table.t_dist[table.t_dist$x >= critical,],
+            fill="red", alpha=0.2) +
+  geom_area(aes(x=x, y=p),
+            data=table.t_dist[table.t_dist$x <= -critical,],
+            fill="red", alpha=0.2) +
+  geom_vline(xintercept = 0, linetype="dashed") +
+  geom_vline(xintercept = t, color="blue", size = 1)
+```

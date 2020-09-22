@@ -1,0 +1,153 @@
+---
+title: "Função poder"
+author: "Bruno Tebaldi"
+date: "6/24/2020"
+output: html_document
+---
+
+
+## Função poder
+
+### Exemplo (GRE)
+
+O GRE é um teste de admissão comumente exigido para pós-graduação. Sua pontuação vai de 130 a 170 pontos.\newline \par Seja $X$ a pontuação média no teste de GRE. Suponha que $X$ é normalmente distribuído com média desconhecida $\theta$ e desvio padrão $\sigma = 10$. Vamos definir a probabilidade de cometer um erro Tipo I em $\alpha = 0.05$, e com uma amostra de 16 pessoas $n = 16$ queremos testar a hipótese nula $H_0: \theta = 150$ contra a hipótese alternativa $H_1: \theta > 150$. \newline \par Qual é o poder do teste de hipóteses se a média real da população fosse $\theta = 159$?
+
+```{r clearall}
+# clear all
+rm(list = ls())
+
+# bibliotecas utilizadas
+library(ggplot2)
+
+```
+
+
+### Definição do espaço parametrico
+
+```{r parametrico}
+# define a granularidade do espaco parametrico.
+# O menor valor possivel no teste é de 150 
+espaco.parametrico.grid <- seq(from=130, to=170, by=0.1)
+
+# agrupa os dados em um data.frame
+table <- data.frame(espaco.parametrico.grid, prob_H0=0)
+```
+
+
+### Definição das variáveis fornecidas
+
+```{r valores}
+sigma = 10 
+alpha = 0.05
+n=16
+
+# H0
+mu=150
+
+# calcula as probabulidade/distribuicao dado H0
+table$prob_H0 = dnorm((table$espaco.parametrico.grid - mu)/(sigma/n^0.5))
+```
+
+
+
+Vamos definir o Valor critico baseado no nível do Erro tipo 1 que temos escolhido a priori. Como temos uma distribuição normal com teste unicaudal teremos que o valor critico será $X^c = \{x \in R | P(|X|\le x) = \alpha \}$
+
+```{r critico}
+# calculamos o valor critico da funcao normal
+X_c = qnorm(1-alpha, lower.tail = TRUE)
+
+# nota critica no GRE
+GRE_c = mu + (X_c * sigma/n^0.5)
+
+
+cat(sprintf("\nO valor critico da distribuição normal é de: %.2f\nA nota critica para esse teste é de: %.2f", X_c, GRE_c))
+
+```
+
+### Grafico da distribuicao
+
+Assumindo que $H_0$ é correta podemos plotar o gráfico da distribuicao com a area de erro tipo 1
+
+```{r pressure, echo=FALSE}
+
+ggplot(table) +
+  geom_line(aes(x=espaco.parametrico.grid,
+                y=prob_H0)) +
+  geom_area(aes(x=espaco.parametrico.grid,
+                y=prob_H0),
+             data=table[table$espaco.parametrico.grid >= GRE_c,],
+            fill="red", alpha=0.2) +
+  labs(title = "",
+       y=NULL,
+       x="GRE Score")
+```
+
+
+
+### Grafico da distribuicao REAL
+
+Porém foi informado que a hipótese nula não é verdadeira, alias temos que $\theta = 159$, isso implica que a curva "real" de probabilidades é fornecido pela curva azul.
+
+```{r pressure2, echo=FALSE}
+
+media.real <- 159
+
+table$prob_REAL <- dnorm((table$espaco.parametrico.grid - media.real)/(sigma/n^0.5))
+
+
+ggplot(table) +
+  geom_line(aes(x=espaco.parametrico.grid,
+                y=prob_H0)) +
+  geom_area(aes(x=espaco.parametrico.grid,
+                y=prob_H0),
+             data=table[table$espaco.parametrico.grid >= GRE_c,],
+            fill="red", alpha=0.2) +
+  geom_line(aes(x=espaco.parametrico.grid,
+                y=prob_REAL), color="blue") +
+  geom_area(aes(x=espaco.parametrico.grid,
+                y=prob_REAL),
+             data=table[table$espaco.parametrico.grid >= GRE_c,],
+            fill="blue", alpha=0.2) +
+    labs(title = "",
+       y=NULL,
+       x="GRE Score")
+```
+
+
+
+
+## Função poder
+
+Assumimos que a média era $\theta = 159$, mas podemos fazer esse exercicio para todos os valores. Logo podemos calcular a função poder para cada valor possível de $\theta$ sob a hipótese alternativa!
+
+```{r funcao poder}
+# Criamos uma funcao que calcula o poder do teste
+funcao.poder <- function(media.real, GRE_c, sigma, n) {
+  ret = pnorm((GRE_c - media.real)/(sigma/n^0.5), lower.tail = FALSE)
+  return(ret)
+}
+  
+
+# calculamos o poder para media.real=159 
+poder <- funcao.poder(media.real, GRE_c, sigma, n)
+
+# mensagem que informa ao usuario o poder quando temos as entradas
+cat(sprintf("---Dados---\nMedia real: %.2f\nGRE Critico: %.2f\nsigma: %.2f\nn: %d\n-----------\nPoder: %f", media.real, GRE_c, sigma, n, poder))
+
+
+# calculamos o poder para cada valor da media.
+poder.grid <- funcao.poder(espaco.parametrico.grid, GRE_c, sigma, n)
+
+# Agrupamos todas as informações em uma tabela
+table.poder = data.frame(grid = espaco.parametrico.grid, poder = poder.grid)
+
+# plotamos o grafico da função poder.
+ggplot(table.poder) +
+  geom_line(aes(x=grid,
+                y=poder)) +
+  labs(title = "Função poder",
+       y="Poder do teste",
+       x="GRE Score")
+
+```
+
